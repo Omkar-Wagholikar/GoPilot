@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -68,6 +69,26 @@ func main() {
 	}
 	if len(resp.Choices) == 0 {
 		panic("No choices in response")
+	}
+
+	type func_args struct {
+		FilePath string `json:"file_path"`
+	}
+
+	choice := resp.Choices[0]
+	finish_reason := choice.FinishReason
+	if finish_reason == "tool_calls" {
+		tool_calls := choice.Message.ToolCalls
+		first_call := tool_calls[0]
+		if first_call.Function.Name == "Read" {
+			var args func_args
+			json.Unmarshal([]byte(first_call.Function.Arguments), &args)
+			content, err := os.ReadFile(args.FilePath)
+			if err != nil {
+				_ = fmt.Errorf("error: %v", err)
+			}
+			fmt.Println(string(content))
+		}
 	}
 
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
